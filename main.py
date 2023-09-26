@@ -3,39 +3,58 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def create_df(csv_file='Logs.csv') -> pd.core.frame.DataFrame:
-    df = pd.read_csv(csv_file)
-    df['Date'] = pd.to_datetime(df['Date'])
-    df['Calories'] = pd.to_numeric(df['Calories']).round(decimals=0)
-    df['Distance'] = pd.to_numeric(df['Distance']).round(decimals=1)
+URL: str = 'treadmill_data.csv'
+COLUMNS: {str: str} = {
+    'DATE': 'Date',
+    'DISTANCE': 'Distance (Km)',
+    'TIME': 'Time',
+    'CALORIES': 'Calories',
+    'PACE': 'Pace (Km/h)'
+}
+
+
+def hist(x_axis, output_filename='distance_histogram.png') -> None:
+    plt.hist(x_axis, bins=5)
+    plt.xlabel('Distance (Km)')
+    plt.ylabel('Frequency')
+    plt.xticks(np.arange(x_axis.min(), x_axis.max() + 0.5, 0.5), rotation=45)
+    plt.title('Distribution of Distance')
+    plt.savefig(output_filename)
+    plt.show()
+
+def calculate_pace(df) -> float:
+    """
+    Calculates & returns the pace.
+    :param df: DataFrame containing null values in the pace column.
+    :return pace: The calculated pace in kilometers per hour (Km/h).
+    """
+    time_values = df['Time'].str.split(':', expand=True).astype(int)
+    minutes = time_values[0] + time_values[1] / 60
+    hours = minutes / 60
+    pace = df[COLUMNS['DISTANCE']] / hours
+    return round(pace, 2)
+
+
+def group_by_period(df, period) -> pd.DataFrame:
+    df['Period'] = df[COLUMNS['DATE']].dt.strftime(period)
+    df = df.groupby('Period').agg({
+        COLUMNS['DISTANCE']: 'sum',
+        COLUMNS['CALORIES']: 'sum',
+        COLUMNS['PACE']: 'mean'
+    }).reset_index()
+    df[COLUMNS['PACE']] = df[COLUMNS['PACE']].round(2)
     return df
 
 
-def plot_df(df):
-    date_array = df['Date']
-    price_array = df['Distance']
-
-    plt.xlabel('Date')
-    plt.ylabel('Distance')
-
-    plt.plot(date_array, price_array, linestyle='solid')
-    plt.ylim(0, max(df['Distance'] + 0.5))
-    plt.show()
-
-
-def scatter_df(df):
-    # create scatter plot
-    plt.scatter(df.Date, df.Distance)
-
-    plt.ylim(0, max(df['Distance'] + 0.5))
-
-    # add horizontal line at mean value of y
-    plt.axhline(y=np.nanmean(df.Distance))
-    plt.show()
-
-
-
 if __name__ == '__main__':
-    DataFrame = create_df('Logs.csv')
-    #plot_df(DataFrame)
-    scatter_df(DataFrame)
+    treadmill_df = pd.read_csv(URL)
+    treadmill_df['Date'] = pd.to_datetime(treadmill_df['Date'])
+    if treadmill_df[COLUMNS['PACE']].isnull().any():
+        treadmill_df[COLUMNS['PACE']].fillna(calculate_pace(treadmill_df), inplace=True)
+        treadmill_df.to_csv(URL, index=False)
+
+    print(group_by_period(treadmill_df, '%Y-%U')) # Weekly
+    print(group_by_period(treadmill_df, '%Y-%m')) # Monthly
+    print(group_by_period(treadmill_df, '%Y')) # Yearly
+
+    hist(treadmill_df[COLUMNS['DISTANCE']])
