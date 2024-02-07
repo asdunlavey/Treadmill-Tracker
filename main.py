@@ -57,4 +57,4 @@ if __name__ == '__main__':
     print(group_by_period(treadmill_df, '%Y-%m')) # Monthly
     print(group_by_period(treadmill_df, '%Y')) # Yearly
 
-    hist(treadmill_df[COLUMNS['DISTANCE']])
+    # hist(treadmill_df[COLUMNS['DISTANCE']])
